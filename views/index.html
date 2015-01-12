@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SSH Client</title>
+  <style>
+  body {
+  font-family: "HelveticaNeue-Light","Helvetica Neue Light","Helvetica Neue",Helvetica,Arial,"Lucida Grande",sans-serif;
+  color:white;
+  font-size:12px;
+  background:#333 ;
+}
+
+    .issue_list_wrap {
+      overflow: hidden;
+      position: relative;
+      height: 40px;
+      }
+    .glyphicon-refresh-animate {
+          -animation: spin .7s infinite linear;
+          -webkit-animation: spin2 .7s infinite linear;
+      }
+
+      @-webkit-keyframes spin2 {
+          from { -webkit-transform: rotate(0deg);}
+          to { -webkit-transform: rotate(360deg);}
+      }
+
+      @keyframes spin {
+          from { transform: scale(1) rotate(0deg);}
+          to { transform: scale(1) rotate(360deg);}
+      }
+  </style>
+  <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+  <script src="http://code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
+  <!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap-theme.min.css">
+
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
+
+<script src="/jquery.terminal-0.7.1.js"></script>
+<link rel="stylesheet" href="/jquery.terminal.css">
+
+
+</head>
+<body style="background-color:#333;color:#F7A5A5">
+ 
+    <div class="container">
+
+      <div class="row row-offcanvas row-offcanvas-right">
+
+        <div class="col-xs-12">
+          
+           <div class="row">
+
+          <div class="page-header alert alert-default" style="background-color:#111">
+            
+            <button type="button" onclick="logout();"  class="btn btn-warning">Log out</button>
+            <div class="row">
+
+            <div class="col-xs-6 col-lg-4">
+              <h1>SSH Client <small>for 홍연</small></h1>
+            </div>
+            
+
+            <div class="col-xs-6 col-lg-8" id="connectBtnHere">
+              
+            </div>
+
+
+
+            </div>
+          </div>
+          </div>
+          <div class="row" id="connecting">
+              <div class="col-xs-6 col-lg-4"></div>
+              <div class="col-xs-6 col-lg-4">
+                <div class="alert alert-success" role="alert">
+                  <h2><span id="connecting_msg">Connecting to server... please wait ...&nbsp;&nbsp;&nbsp;</span><span class="glyphicon glyphicon-time glyphicon-refresh-animate"></span> </h2>
+                </div>
+              </div>
+              <div class="col-xs-6 col-lg-4"></div>
+          </div>
+
+        <div class="row" id="terminalHere">
+
+          
+
+
+
+          <div id="redisShell" ></div>
+        </div>
+
+        
+        
+      </div><!--/row-->
+
+      <hr>
+
+      <footer>
+        <p>&copy; Company 2014</p>
+      </footer>
+
+    </div><!--/.container-->
+
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  $('#connecting').hide();
+  
+  function logout(){
+    document.location.href="/logout";
+  }
+  var wecome_msg ='===================================================\n';
+      wecome_msg+='             ____ _   ___ ___           ____\n';
+      wecome_msg+=" ＼＼/＼ // //__ // / /  / /  ＼ / ＼/ ＼＼___\n";
+      wecome_msg+='   ＼/＼// //__ //__＼＼_＼＼__///＼_/＼_＼＼___\n';
+      wecome_msg+='       \n';
+      wecome_msg+='====== SSH Client for web. Author by John.Ko ======';
+  var socket = io.connect('http://'+document.location.host);
+  
+
+  socket.on('connect', function () {
+    console.log("Socket Connected");
+  });
+
+
+  var servers = {};
+
+  socket.on('servers', function (data) {
+    console.log(data);
+    servers = data.servers;
+    var buttonHtml = "";
+    for(var server in servers){
+      buttonHtml+="<button type=\"button\" id=\""+server+"\" class=\"btn btn-info connect\">"+server+"</button>"
+    }
+    $('#connectBtnHere').html(buttonHtml);
+    setBtnClickEvent();
+
+  });
+
+  function setBtnClickEvent(){
+    $('.connect').on("click",function(a,b,c){
+      
+      currentId = a.target.id;
+      
+      $('.btn-danger').removeClass('btn-danger').addClass('btn-info');
+      $(a.target).removeClass('btn-info');
+      $(a.target).addClass('btn-danger');
+      
+      currentIp = servers[currentId];
+      sshConnect(currentId);
+    });
+  }
+
+  function sshConnect(id){
+    $('#connecting_msg').html('Connecting to '+id+' server... please wait...  ');
+
+    $('#connecting').show();
+    var _param = {
+      id:id
+    }
+    
+    openTerminal(function(){
+      socket.emit('connect-server',_param);  
+    });
+
+  };
+
+  var currentId=""
+  var currentIp=""
+  var connectedTeminal;
+  var currentCommand;
+  function openTerminal(callback){
+    $('#redisShell').remove();
+      $('#terminalHere').append('<div id="redisShell" style="overflow-y : scroll;"></div>');
+      $('#redisShell').hide();
+      $('#redisShell').terminal(function(command, term) {
+          connectedTeminal = term;
+          currentCommand = command;
+          if (command !== '') {
+            term.pause();
+            
+            socket.emit('command',{command:command});
+
+          } else {
+             term.echo('');
+          }
+        }, {
+            greetings: wecome_msg,
+            name: 'ssh_command',
+            height: 500
+            //,prompt: '$>'
+        });
+      var e = jQuery.Event("keydown");
+      e.which = 13; // # Some key code value
+      e.keyCode = 13
+      
+      $("#redisShell").trigger(e);
+
+      callback();
+  }
+  socket.on('disconnect by server',function(data){
+
+    if(data.disconnectIp ==currentIp){
+      alert("Disconnected by server");  
+      $('#redisShell').remove();
+    }
+    
+  });
+
+  socket.on('command-result',function(data){
+    
+    $('#connecting').hide();
+    $('#redisShell').show();
+    if(currentCommand!= (new String(data))){
+      connectedTeminal.echo((new String(data)).replace(currentCommand,''));
+      connectedTeminal.resume();                
+    }
+    
+  });
+
+  socket.on('connect fail',function(data){
+
+    $('#connecting_msg').html('Connect Failed..<br/> Try connecting again...  ');
+
+    var _param = {
+      id:currentId,
+    }
+    
+    openTerminal(function(){
+      socket.emit('connect-server',_param);  
+    });
+  });
+
+</script>
+
+</body>
+</html>
+

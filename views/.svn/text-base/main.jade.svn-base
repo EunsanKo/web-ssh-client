@@ -1,0 +1,38 @@
+extends layout
+
+block content
+	h1=title
+	p Welcome to #{title}
+	div
+		input#userId(type="hidden", value="#{userId}")		
+		input#userName(type="hidden", value="#{userName}")
+
+	div#contain
+		div(style="width:50%; float: left;")
+			h3 flashmob list
+			textarea#flashmobArea(rows="10", cols="50")
+		div(style="width:50%; float: right;")
+			h3 attendance list
+			textarea#attendanceArea(rows="10", cols="50")
+			input#currentFlashmobId(type="hidden")
+
+	
+		div(style="width:50%; float: left;")			
+			label flashmob ID : 
+			input#flashmobId(type="text")
+			input#searchBtn(type="button", value="search")
+
+		div(style="width:50%; float: right;")			
+			input#joinBtn(type="button", value="join")
+			input#withdrawBtn(type="button", value="withdraw")
+
+			
+	//
+		div
+			label(style="width:150px") emp name : 
+			input#empName(type="text")
+		div
+			label(style="width:150px")  emp age :
+			input#empAge(type="text")
+
+		input#createBtn(type="button", value="create")

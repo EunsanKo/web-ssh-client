@@ -1,0 +1,359 @@
+
+/*
+ * GET home page.
+ */
+var mongoose = require('mongoose');
+var db = mongoose.connect('mongodb://172.22.9.210:30001/admin');
+var Schema = mongoose.Schema;
+
+
+var Flashmob = new Schema({	
+	flashmobId : String,
+	subject : String,
+	date : String,
+	time : String,	
+	location : String,
+	detailLocation : String,
+	lat : Number,
+	lng : Number,
+	note : String,
+	hostId : String,
+	type : Number,
+	minPart : Number,	//최소 참여인원
+	maxPart : Number	//최대 참여인원
+}, {collection : 'flashmob'});
+
+var Attendance = new Schema({
+	flashmobId : String,
+	userId : String,
+	name: String,
+	picture : String,
+	opinion : String
+
+}, {collection : 'attendance'});
+
+var User = new Schema({
+	email : String,
+	name : String,
+	picture : String,
+	id : String,
+	authority : String,
+	userData : String
+
+	//추후에 social 데이터 들을 추가해 넣을 것입니다. 고로 나머지 정보는 social 데이터에 맞게 할것입니다
+}, {collection : 'user'})
+
+
+var Fmtype = new Schema({
+	fmTypeId : Number, // 벙개 종류(술모임, 학습) 아이디
+	fmTypeName : String // 벙개 종류 이름
+
+}, {collection : 'fmtype'})
+
+var flashmobModel = mongoose.model('flashmob', Flashmob);
+var attendanceModel = mongoose.model('attendance', Attendance);
+var userModel = mongoose.model('user', User);
+
+exports.index = function(req, res){
+
+	
+	
+    if(req.session.auth){
+    	
+    	//console.log(req.session.auth.facebook);
+    	//console.log(req.session.auth.facebook.user.picture.data);
+    	var userObj = req.session.auth.facebook.user;
+    	//var pictureObj = req.session.auth.facebook.user.picture.data.url
+
+    	userModel.findOne({email:userObj.email},function(err,obj){
+    		if(err){
+    			console.log(err);
+    			throw err;
+    		}else{
+
+    			if(obj==null){
+    				var user = new userModel();
+						user.email = userObj.email;
+						user.name = userObj.name;
+						user.picture = userObj.picture.data.url;
+						user.id = userObj.id;
+						user.authority = 'facebook';
+						user.userData = JSON.stringify(userObj);
+						user.save(function(err) {
+							if(err) {
+								console.log(err);
+								throw err;
+							}else {
+								res.render('index', { user: JSON.stringify(user) });
+								res.cookie('FLASH_MOB',JSON.stringify(user),{expires:new Date(Date.now()+900000)});
+							}
+						});
+    			}else{
+    				//res.cookie('FLASH_MOB',JSON.stringify(obj),{expires:new Date(Date.now()+900000)});
+    				res.cookie('FLASH_MOB',JSON.stringify(obj),{});
+    				res.render('index', { user: JSON.stringify(obj) });
+    			}
+
+    		}
+    	});
+	
+    }else{
+    	console.log("엘스");
+    	res.render('index', { title: 'Express' });	
+    }
+
+};
+
+
+exports.main = function(req, res){	
+	res.render('main', {userId : req.param('userId'), userName : req.param('userName')});
+};
+
+
+exports.flashmoblist = function(req, res) {
+	flashmobModel.find({}, function(err, docs){
+		res.json(docs);
+	});
+};
+
+exports.flashmob = function(req, res) {
+	var _id = req.body.id;
+
+	flashmobModel.find({_id : _id}, function(err, docs){
+		res.json(docs);
+	});
+};
+
+exports.createFlashmob = function(req, res){
+	var subject = req.body.subject;
+	var hostId = req.body.hostId;	
+	var date = req.body.date;
+	var location = req.body.location;
+	var detailLocation = req.body.detailLocation;
+	var time = req.body.time;
+	var lat = req.body.lat;
+	var lng = req.body.lng;
+	var note =req.body. note;
+	var type = 0;
+	
+	var flashmob = new flashmobModel();
+	
+	flashmob.subject = subject;
+	flashmob.hostId = hostId;
+	flashmob.type = type;
+	flashmob.date = date;
+	flashmob.location = location;
+	flashmob.detailLocation = detailLocation;
+	flashmob.time = time;
+	flashmob.lat = lat;
+	flashmob.lng = lng;
+	flashmob.note = note;
+	flashmob.flashmobId = flashmob._id;
+
+	flashmob.save(function(err) {
+		if(err) {
+			console.log(err);
+			throw err;
+		}else {
+			res.json({status : "SUCCESS", flashmob : flashmob});
+		}
+	});
+};
+
+/*flashmob 수정 by 임영란*/
+exports.modifyFlashmob = function(req, res){
+	var subject = req.body.subject;
+	var hostId = req.body.hostId;	
+	var date = req.body.date;
+	var location = req.body.location;
+	var detailLocation = req.body.detailLocation;
+	var time = req.body.time;
+	var lat = req.body.lat;
+	var lng = req.body.lng;
+	var note =req.body.note;
+	var flashmobId =req.body.flashmobId;
+	//var type = req.body.type;
+	
+	var flashmob = new flashmobModel();
+	
+	flashmob.subject = subject;
+	flashmob.hostId = hostId;	
+	flashmob.date = date;
+	flashmob.location = location;
+	flashmob.detailLocation = detailLocation;
+	flashmob.time = time;
+	flashmob.lat = lat;
+	flashmob.lng = lng;
+	flashmob.note = note;
+	flashmob.flashmobId = flashmobId;
+	//flashmob.type = type;
+	console.log("flashmob :");
+	console.log(flashmob);
+	flashmobModel.update({ flashmobId : flashmobId },{ $set:  { subject : subject, time : time, date:date, detailLocation:detailLocation, note:note }}, function(err) {
+		if(err) {
+			console.log(err);
+			throw err;
+		}else {
+
+			res.json({status : "SUCCESS", flashmob : flashmob});
+		}
+	});
+};
+
+exports.deleteFlashmob = function(req, res) {
+	var flashmobId = req.body.flashmobId;
+	
+	flashmobModel.findOneAndRemove({flashmobId : flashmobId}, function(err){
+		if(err){
+			throw err;
+		}else{
+			res.json({status : "SUCCESS"});			
+		}
+	});
+};
+
+exports.attendancelist = function(req, res) {
+	var flashmobId = req.body.flashmobId;
+	
+	attendanceModel.find({flashmobId : flashmobId}, function(err, docs){	
+		if(err) {
+			console.log(err);
+			throw err;
+		}else {
+			res.json(docs);
+		}
+	})
+};
+
+exports.join = function(req, res) {
+	var flashmobId = req.body.flashmobId;
+	var userId = req.body.userId;	
+	var opinion = req.body.opinion;	
+	var picture = req.body.picture;	
+	var name = req.body.name;
+
+	var attendance = new attendanceModel();
+
+	attendance.flashmobId = flashmobId;
+	attendance.userId = userId;	
+	attendance.opinion = opinion;	
+	attendance.picture = picture;	
+	attendance.name = name;	
+
+	attendance.save(function(err){
+		if(err){
+			throw err;
+		}else{
+			res.json({status : "SUCCESS"});
+		}
+	});
+};
+
+exports.withdraw = function(req, res) {	
+	var flashmobId = req.body.flashmobId;
+	var userId = req.body.userId;
+	
+	attendanceModel.findOneAndRemove({flashmobId : flashmobId, userId : userId}, function(err){
+		if(err){
+			throw err;
+		}else{
+			res.json({status : "SUCCESS"});			
+		}
+	});
+};
+
+exports.joinFlashmobList = function(req, res) {
+	var userId = req.body.userId;
+	
+	attendanceModel.find({userId : userId}, function(err, docs){
+		if(err) {
+			console.log(err);
+			throw err;
+		}else {			
+			res.json(docs);
+		}
+	});
+}
+
+// flashmob 단건조회 - shKwak
+exports.retrieveFlashmob = function(req, res) {
+	var flashmobId = req.query.flashmobId;
+
+	flashmobModel.findOne({flashmobId : flashmobId}, function(err, docs){
+		if(err) {
+			console.log(err);
+			throw err;
+		}else {			
+			res.json(docs);
+		}
+	});
+};
+
+// 내가 등록한 flashmob 조회 - shKwak
+exports.retrieveMyRegistList = function(req, res) {
+	var hostId = req.query.hostId;
+	
+	flashmobModel.find({hostId : hostId}, function(err, docs){
+		if(err) {
+			console.log(err);
+			throw err;
+		}else {		
+			res.json(docs);
+		}
+	});
+};
+
+
+exports.retrieveFlashmobListByType = function(req, res) {
+	var type = req.body.type;
+ 
+ 	flashmobModel.find({type : type}, function(err, docs){
+  		if(err) {
+   			console.log(err);
+   			throw err;
+  		}else {   
+   			res.json(docs);
+  		}
+ 	});
+}
+
+
+
+
+exports.retrieveFlashmobList = function(callback) {
+	flashmobModel.find({}, function(err, docs){
+		callback(docs);
+	});
+};
+
+exports.retrieveAttendanceList = function(flashmobId, callback) {		
+	attendanceModel.find({flashmobId : flashmobId}, function(err, docs){	
+		if(err) {
+			console.log(err);
+			throw err;
+		}else {
+			callback(docs);
+		}
+	});
+};
+
+exports.retrieveFlashmobById = function(flashmobId, callback) {		
+	flashmobModel.findOne({flashmobId : flashmobId}, function(err, docs){	
+		if(err) {
+			console.log(err);
+			throw err;
+		}else {
+			callback(docs);
+		}
+	});
+};
+
+exports.deleteFlashmobAttendanceList = function(flashmobId){
+	attendanceModel.find({flashmobId : flashmobId}).remove();
+};
+
+exports.logout  = function(req, res) {
+	console.log("Log out");
+	res.clearCookie('FLASH_MOB');
+	res.json('');
+};

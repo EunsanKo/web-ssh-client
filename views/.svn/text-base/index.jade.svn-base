@@ -1,0 +1,6 @@
+extends layout
+
+block content
+  
+  input#authUserId(type="text",value="#{user}")
+  
